@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wpisz dane by wygenerować QR i URL</title>
+</head>
+<body>
+    <h1>Create Business Card</h1>
+    <h2 style="font-size: 1.5em;">Konfig wizytówki</h2>
+    {% if messages %}
+        <ul>
+            {% for message in messages %}
+                <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label for="name_and_surname">Twoje imię i nazwisko:</label>
+        <input type="text" id="name_and_surname" name="name_and_surname" required><br><br>
+
+        <label for="company">Nazwa firmy:</label>
+        <input type="text" id="company" name="company" required><br><br>
+
+        <label for="phone_number">Numer telefonu:</label>
+        <input type="tel" id="phone_number" name="phone_number" required><br><br>
+
+        <label for="email">Adres email:</label>
+        <input type="email" id="email" name="email" required><br><br>
+
+        <label for="user_photo">Zdjęcie (najlepiej kwadrat):</label>
+        <input type="file" id="user_photo" name="user_photo" accept="image/*" required><br><br>
+
+        <label for="vcard_address">Adres vcard:</label>
+        <input type="text" id="vcard_address" name="vcard_address" required><br><br>
+
+        <input type="submit" value="Dalej">
+    </form>
+</body>
+</html>

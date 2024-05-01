@@ -1,0 +1,26 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+DTSTART:19630921
+DTEND:19630921
+SUMMARY:Birthday - Derik Stenerson
+DESCRIPTION:Birthday of Derik Stenerson
+LOCATION:Redmond, WA, USA
+ORGANIZER;CN=Derik Stenerson:MAILTO:deriks@Microsoft.com
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:19630921
+DTEND:19630921
+SUMMARY:Birthday - Anik Ganguly
+DESCRIPTION:Birthday of Anik Ganguly
+LOCATION:Livonia, MI, USA
+ORGANIZER;CN=Anik Ganguly:MAILTO:ganguly@acm.org
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:19630921
+DTEND:19630921
+SUMMARY:Birthday - Robert Moskowitz
+DESCRIPTION:Birthday of Robert Moskowitz
+ORGANIZER;CN=Robert Moskowitz:MAILTO:rgm-ietf@htt-consult.com
+END:VEVENT
+END:VCALENDAR

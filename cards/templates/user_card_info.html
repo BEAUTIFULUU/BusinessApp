@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Card</title>
+    <style>
+        .download-button {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+    </style>
+    <script>
+        function downloadQR() {
+            var qrCodeImg = document.getElementById('qr-code-img');
+            var downloadLink = document.createElement('a');
+            downloadLink.href = qrCodeImg.src;
+            downloadLink.download = 'qr_code.png';
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        }
+
+        function copyURL() {
+            var cardUrlInput = document.getElementById('card-url');
+            cardUrlInput.select();
+            document.execCommand('copy');
+            alert('URL copied to clipboard');
+        }
+    </script>
+</head>
+<body>
+    <h1>My Card</h1>
+    <div class="download-button">
+        {% if card_url %}
+        <p>Card URL: <input type="text" id="card-url" value="{{ card_url }}" readonly> <button onclick="copyURL()">Copy URL</button></p>
+        {% else %}
+        <p>No card URL available.</p>
+        {% endif %}
+        <button onclick="downloadQR()">Download QR Code</button>
+    </div>
+    <img id="qr-code-img" src="{{ qr_code }}" alt="QR Code">
+</body>
+</html>
