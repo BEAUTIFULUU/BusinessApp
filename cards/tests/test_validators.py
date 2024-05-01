@@ -63,7 +63,7 @@ class TestImageValidation:
         "in_memory_file", [("test_images", "fake_jpg_file.jpg")], indirect=True
     )
     def test_validate_image_format_raise_error_if_invalid_image_format(
-        self, in_memory_file
+        self, in_memory_file: SimpleUploadedFile
     ):
         with pytest.raises(ValidationError) as e:
             validate_image_format(uploaded_image=in_memory_file)
@@ -76,7 +76,7 @@ class TestImageValidation:
         "in_memory_file", [("test_images", "wrong_extension_image.ggg")], indirect=True
     )
     def test_validate_image_format_raise_error_if_image_invalid_image_extension(
-        self, in_memory_file
+        self, in_memory_file: SimpleUploadedFile
     ):
         with pytest.raises(ValidationError) as e:
             validate_image_format(uploaded_image=in_memory_file)
@@ -86,7 +86,7 @@ class TestImageValidation:
         "in_memory_file", [("test_images", "valid_image.jpg")], indirect=True
     )
     def test_validate_image_size_does_not_raise_error_if_image_in_right_size(
-        self, in_memory_file
+        self, in_memory_file: SimpleUploadedFile
     ):
         try:
             validate_image_size(uploaded_image=in_memory_file)
@@ -96,7 +96,9 @@ class TestImageValidation:
     @pytest.mark.parametrize(
         "in_memory_file", [("test_images", "too_big_image.jpg")], indirect=True
     )
-    def test_validate_image_size_raise_error_if_image_too_big(self, in_memory_file):
+    def test_validate_image_size_raise_error_if_image_too_big(
+        self, in_memory_file: SimpleUploadedFile
+    ):
         with pytest.raises(ValidationError) as e:
             validate_image_size(uploaded_image=in_memory_file)
             assert str(e.value) == "Photo is too big. Max width: 400, Max height: 600"
@@ -104,7 +106,9 @@ class TestImageValidation:
     @pytest.mark.parametrize(
         "in_memory_file", [("test_images", "too_small_image.jpg")], indirect=True
     )
-    def test_validate_image_size_raise_error_if_image_too_small(self, in_memory_file):
+    def test_validate_image_size_raise_error_if_image_too_small(
+        self, in_memory_file: SimpleUploadedFile
+    ):
         with pytest.raises(ValidationError) as e:
             validate_image_size(uploaded_image=in_memory_file)
             assert str(e.value) == "Photo is too small. Min width: 100, Min height: 100"
@@ -112,7 +116,7 @@ class TestImageValidation:
 
 @pytest.mark.django_db
 def test_validate_business_card_duplication_raise_error_if_user_already_has_card(
-    business_card, user
+    business_card: BusinessCard, user: User
 ):
     with pytest.raises(ValidationError) as e:
         validate_business_card_duplication(user=user)

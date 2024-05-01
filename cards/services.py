@@ -109,12 +109,12 @@ def create_business_card(data: dict[str, any], user: User) -> BusinessCard:
     return BusinessCard.objects.create(**data, user=user)
 
 
-def get_user_qr(user: User) -> str | None:
+def get_user_card_qr_url(user: User) -> str:
     qr_image_path = f"{settings.DOMAIN}media/qr_codes/qr_user_id-{user.id}.png"
     return qr_image_path
 
 
-def get_user_card_url(user: User) -> str | None:
+def get_user_card_url(user: User) -> str:
     qr_url = f"{settings.DOMAIN}contact/{user.id}"
     return qr_url
 

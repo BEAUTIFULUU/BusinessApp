@@ -12,7 +12,7 @@ from django.urls import reverse
 from django.views import View
 
 from cards.models import BusinessCard
-from cards.services import create_business_card, get_user_qr, get_user_card_url
+from cards.services import create_business_card, get_user_card_qr_url, get_user_card_url
 from cards.forms import BusinessCardForm
 
 
@@ -47,7 +47,7 @@ class MyCardView(View):
             )
             return HttpResponseRedirect(reverse("create_card"))
         context = {
-            "card_url": get_user_card_url(request.user),
-            "qr_code": get_user_qr(user=request.user),
+            "card_url": get_user_card_url(user=request.user),
+            "qr_code": get_user_card_qr_url(user=request.user),
         }
         return render(request, "user_card_info.html", context)
