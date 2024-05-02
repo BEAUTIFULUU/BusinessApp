@@ -30,6 +30,20 @@ def user() -> User:
 
 
 @pytest.fixture
+def business_card(user: User):
+    business_card = BusinessCard.objects.create(
+        name_and_surname="John Doe",
+        company="testcompany",
+        phone_number="+48264354758",
+        email="user@gmail.com",
+        user_photo=None,
+        vcard=None,
+        user=user,
+    )
+    return business_card
+
+
+@pytest.fixture
 def in_memory_image():
     filename = "valid_image.jpg"
     current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -106,6 +120,9 @@ class TestCardsServices:
         qr_url = get_user_card_qr_url(user=user)
         assert qr_url == f"{settings.DOMAIN}media/qr_codes/qr_user_id-{user.id}.png"
 
-    def test_get_user_card_url_return_url(self, user: User):
-        card_url = get_user_card_url(user=user)
-        assert card_url == f"{settings.DOMAIN}contact/{user.id}"
+    def test_get_user_card_url_return_url(self, business_card: BusinessCard):
+        card_url = get_user_card_url(business_card.id)
+        assert (
+            card_url
+            == f"{settings.DOMAIN}contact_request/{business_card.id}/phone_number"
+        )

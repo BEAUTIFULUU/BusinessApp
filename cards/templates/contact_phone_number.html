@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact Request</title>
+    <script>
+        function toggleSendButton() {
+            var vcardInput = document.querySelector('input[name="vcard"]');
+            var sendButton = document.querySelector('#send-button');
+
+            if (vcardInput.files.length > 0) {
+                sendButton.style.display = 'inline-block';
+            } else {
+                sendButton.style.display = 'none';
+            }
+        }
+    </script>
+</head>
+<body>
+    <h1>Cześć, tu {{ name_and_surname }}, z firmy {{ company }}.</h1>
+    <p>Proszę, zostaw mi numer kontaktowy, a ja wyślę Ci moją wizytówkę.</p>
+
+    <img src="{{ lead_photo.url }}" alt="{{ name_and_surname }}'s Photo">
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="tel" name="phone_number" placeholder="Wpisz swój numer telefonu...">
+        <button type="submit" name="action" value="phone_number">Dalej</button>
+    </form>
+
+    <p>lub</p>
+
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="file" name="vcard" accept=".vcf" onchange="toggleSendButton()">
+        <button id="send-button" type="submit" name="action" value="vcard" style="display: none;">Wyślij wizytówkę</button>
+    </form>
+
+    <script>
+        toggleSendButton(); // Call the function initially to set the visibility of the button
+    </script>
+</body>
+</html>

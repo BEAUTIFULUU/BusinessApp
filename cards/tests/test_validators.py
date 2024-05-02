@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.core.files.uploadedfile import SimpleUploadedFile
 
+from cards.services import parse_vcard_data
 from cards.validators import (
     validate_image_format,
     validate_business_card_duplication,
@@ -112,6 +113,21 @@ class TestImageValidation:
         with pytest.raises(ValidationError) as e:
             validate_image_size(uploaded_image=in_memory_file)
             assert str(e.value) == "Photo is too small. Min width: 100, Min height: 100"
+
+    @pytest.mark.parametrize(
+        "in_memory_file", [("test_vcards", "valid_vcf_vcard.vcf")], indirect=True
+    )
+    def test_parse_vcard_data(self, in_memory_file: SimpleUploadedFile):
+        expected_parsed_vcard_data = {
+            "phone": "+48-758-334-536",
+            "name": "Derik",
+            "surname": "Stenerson",
+            "email": "deriks@Microsoft.com",
+            "comments": [{"text": "Company: Microsoft Corporation"}],
+        }
+        parsed_vcard_data = parse_vcard_data(vcard_file=in_memory_file)
+
+        assert parsed_vcard_data == expected_parsed_vcard_data
 
 
 @pytest.mark.django_db

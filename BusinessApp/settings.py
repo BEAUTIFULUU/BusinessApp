@@ -152,9 +152,10 @@ WHITELISTED_IMAGE_TYPES = {
 
 WHITELISTED_VCARD_TYPES = {
     "vcf": "text/vcard",
-    "vcs": "text/calendar",
 }
 
 AUTH_USER_MODEL = "cards.CustomUser"
 
 DOMAIN = os.environ["DOMAIN"]
+
+CEREMEO_URL = os.environ["CEREMEO_URL"]

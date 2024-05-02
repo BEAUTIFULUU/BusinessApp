@@ -3,23 +3,25 @@ import os
 import uuid
 from io import BytesIO
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, Optional
 
 import qrcode
 import vobject
+import requests
 from django.core.files.base import ContentFile
 from vobject import vCard
 from PIL import Image
 from django.contrib.auth.models import User
-from django.core.files.uploadedfile import InMemoryUploadedFile
+from django.core.files.uploadedfile import InMemoryUploadedFile, SimpleUploadedFile
 from django.http import HttpRequest, QueryDict
 from django.shortcuts import get_object_or_404
 
 from BusinessApp import settings
-from cards.models import BusinessCard
+from cards.models import BusinessCard, ContactRequest
 from cards.validators import (
     validate_business_card_duplication,
     validate_user_photo,
+    validate_vcard_data,
 )
 
 
@@ -46,7 +48,7 @@ def set_business_cart_post_data(request: HttpRequest) -> QueryDict:
 
 
 def resize_image_to_square(
-    uploaded_image: InMemoryUploadedFile, user: User
+        uploaded_image: InMemoryUploadedFile, user: User
 ) -> InMemoryUploadedFile:
     image = Image.open(uploaded_image)
     image = image.convert("RGB")
@@ -114,10 +116,71 @@ def get_user_card_qr_url(user: User) -> str:
     return qr_image_path
 
 
-def get_user_card_url(user: User) -> str:
-    qr_url = f"{settings.DOMAIN}contact/{user.id}"
+def get_user_card_url(card_id: uuid.UUID) -> str:
+    qr_url = f"{settings.DOMAIN}contact_request/{card_id}/phone_number"
     return qr_url
 
 
-def get_business_card_details(user: User, card_id: uuid.UUID) -> BusinessCard:
-    return get_object_or_404(BusinessCard, id=card_id, user=user)
+def get_business_card(user_id: uuid.UUID) -> BusinessCard:
+    return get_object_or_404(BusinessCard, user_id=user_id)
+
+
+def create_contact_request(
+        data: dict[str, any], requestor: Optional[User], lead: User
+) -> ContactRequest:
+    data["lead"] = lead
+    if requestor is not None and requestor.is_authenticated:
+        data["requestor"] = requestor
+    return ContactRequest.objects.create(**data)
+
+
+def parse_vcard_data(vcard_file: SimpleUploadedFile) -> dict[str, str]:
+    vcard_content = vcard_file.read().decode("utf-8")
+
+    if not vcard_content:
+        return {}
+
+    try:
+        vcard = vobject.readOne(vcard_content)
+    except StopIteration:
+        return {}
+
+    vcard_data = {
+        "phone": None,
+        "name": None,
+        "surname": None,
+        "email": None,
+        "comments": []  # Initialize comments list
+    }
+
+    if vcard.tel:
+        vcard_data["phone"] = vcard.tel.value
+
+    if vcard.n:
+        vcard_data["surname"] = vcard.n.value.family
+        vcard_data["name"] = vcard.n.value.given
+
+    if vcard.email:
+        vcard_data["email"] = vcard.email.value
+
+    if vcard.org:
+        company_name = vcard.org.value[0] if isinstance(vcard.org.value, list) else vcard.org.value
+        vcard_data["comments"].append({"text": f"Company: {company_name}"})
+
+    validate_vcard_data(vcard_data)
+
+    return vcard_data
+
+
+def get_phone_number_and_vcard(data):
+    phone_number = data.get("phone_number")
+    vcard = data.get("vcard")
+    return phone_number, vcard
+
+
+def send_data_to_ceremeo_api(data: dict[str, str]):
+    try:
+        response = requests.post(settings.CEREMEO_URL, json=data)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        return f"Error sending data to Ceremeo API: {e}"

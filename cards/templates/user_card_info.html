@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Card</title>
+    <title>Oto twoje dane</title>
     <style>
         .download-button {
             text-align: center;
@@ -30,14 +30,14 @@
     </script>
 </head>
 <body>
-    <h1>My Card</h1>
+    <h1>Oto twoje dane</h1>
     <div class="download-button">
         {% if card_url %}
-        <p>Card URL: <input type="text" id="card-url" value="{{ card_url }}" readonly> <button onclick="copyURL()">Copy URL</button></p>
+        <p>Adres URL: <input type="text" id="card-url" value="{{ card_url }}" readonly> <button onclick="copyURL()">kopiuj</button></p>
         {% else %}
         <p>No card URL available.</p>
         {% endif %}
-        <button onclick="downloadQR()">Download QR Code</button>
+        <p>Kod QR - <button onclick="downloadQR()">pobierz</button></p>
     </div>
     <img id="qr-code-img" src="{{ qr_code }}" alt="QR Code">
 </body>

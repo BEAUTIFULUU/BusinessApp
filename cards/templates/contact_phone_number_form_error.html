@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact Phone Number</title>
+</head>
+<body>
+    <h1>Contact Phone Number</h1>
+
+    <p>Name: {{ name_and_surname }}</p>
+    <p>Company: {{ company }}</p>
+    <img src="{{ lead_photo.url }}" alt="Lead Photo">
+
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Submit</button>
+    </form>
+
+    {% if form.errors %}
+        <p style="color: red;">Please correct the errors below:</p>
+        <ul>
+            {% for field, errors in form.errors.items %}
+                {% for error in errors %}
+                    <li>{{ error }}</li>
+                {% endfor %}
+            {% endfor %}
+        </ul>
+    {% endif %}
+</body>
+</html>
