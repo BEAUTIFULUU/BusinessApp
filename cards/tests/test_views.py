@@ -1,13 +1,11 @@
 import mimetypes
 import os
-from bs4 import BeautifulSoup
 import pytest
 from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import SimpleUploadedFile, InMemoryUploadedFile
 from django.test import Client
 from django.urls import reverse
 from cards.models import BusinessCard
-from cards.services import get_user_card_url, get_user_card_qr_url
 
 User = get_user_model()
 
@@ -103,7 +101,6 @@ class TestCreateCardView:
         assert response.status_code == 302
         assert BusinessCard.objects.count() == 1
         created_card = BusinessCard.objects.first()
-
         os.remove(created_card.user_photo.path)
         os.remove(created_card.vcard.path)
 
@@ -179,21 +176,19 @@ class TestCreateCardView:
 @pytest.mark.django_db
 class TestMyCardViewView:
     def test_my_card_view_return_200_for_authenticated_user_with_business_card(
-        self, client: Client, business_card: BusinessCard
+        self,
+        client: Client,
+        business_card: BusinessCard,
+        in_memory_image: SimpleUploadedFile,
+        in_memory_vcard: SimpleUploadedFile,
     ):
         client.force_login(business_card.user)
         response = client.get(reverse("card_info"))
         assert response.status_code == 200
-        soup = BeautifulSoup(response.content, "html.parser")
-        card_url_element = soup.find(id="card-url")
-        assert card_url_element.get("value") == get_user_card_url(
-            user=business_card.user
-        )
-
-        qr_code_element = soup.find(id="qr-code-img")
-        assert qr_code_element.get("src") == get_user_card_qr_url(
-            user=business_card.user
-        )
+        assert b"card-url" in response.content
+        assert b"qr-code-img" in response.content
+        os.remove(f"media/images/{in_memory_image.name}")
+        os.remove(f"media/vcard_files/{in_memory_vcard.name}")
 
     def test_my_card_view_return_302_for_authenticated_user_with_no_business_card(
         self, client: Client

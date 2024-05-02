@@ -34,7 +34,7 @@ def generate_vcard(data: dict[str, str], user_id: int) -> ContentFile:
     vcard_content += f"ADR;TYPE=WORK:;;{data.get('street')};{data.get('city')};{data.get('region')};{data.get('postal_code')};{data.get('country')}\n"
     vcard_content += f"END:VCARD\n"
 
-    return ContentFile(vcard_content, name=f"user_id-{user_id}_{uuid.uuid4()}.vcf")
+    return ContentFile(vcard_content, name=f"user_id-{user_id}.vcf")
 
 
 def set_business_cart_post_data(request: HttpRequest) -> QueryDict:
@@ -100,7 +100,7 @@ def create_business_card(data: dict[str, any], user: User) -> BusinessCard:
         resized_image = resize_image_to_square(uploaded_image=uploaded_image, user=user)
         uploaded_image = resized_image
 
-    uploaded_image.name = f"user_id-{user.id}_{uuid.uuid4()}.jpg"
+    uploaded_image.name = f"user_id-{user.id}.jpg"
 
     data["vcard"] = vcard
     data["user_photo"] = uploaded_image
