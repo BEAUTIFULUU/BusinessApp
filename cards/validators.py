@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from PIL import Image
 
 from BusinessApp import settings
-from cards.models import BusinessCard
+from cards.models import BusinessCard, ContactRequest
 
 
 def validate_image_format(uploaded_image: InMemoryUploadedFile) -> None:
@@ -90,3 +90,9 @@ def validate_vcard_data(vcard_data: dict) -> None:
 
     if not vcard_data["phone"].startswith("+48"):
         raise ValidationError("Phone number must start with '+48'")
+
+
+def validate_phone_number_for_contact_request(phone_number: str) -> None:
+    contact_request = ContactRequest.objects.filter(phone_number=phone_number)
+    if contact_request:
+        raise ValidationError("You cannot create contact request for your own card.")

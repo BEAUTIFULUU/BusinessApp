@@ -99,7 +99,7 @@ class ContactRequestPhoneInputView(View):
                     lead=business_card.user,
                 )
                 error_message = send_data_to_ceremeo_api(data=data)
-                redirect_url_name = "requestor_info"
+                redirect_url_name = "finish_meme"
             else:
                 error_message = send_parsed_vcard_data_to_ceremeo(vcard=vcard)
                 redirect_url_name = "contact_prefs"

@@ -21,7 +21,9 @@ from cards.services import (
     get_business_card,
     create_contact_request,
     parse_vcard_data,
-    get_phone_number_and_vcard_from_request_data, send_data_to_ceremeo_api,
+    get_phone_number_and_vcard_from_request_data,
+    send_data_to_ceremeo_api,
+    send_parsed_vcard_data_to_ceremeo, redirect_based_on_request_contact_state, get_contact_request,
 )
 from cards.models import BusinessCard, ContactRequest
 
@@ -29,9 +31,9 @@ User = get_user_model()
 
 
 @pytest.fixture
-def ceremeo_api_mock():
-    with requests_mock.Mocker() as m:
-        yield m
+def request_mocker():
+    with requests_mock.Mocker() as mocker:
+        yield mocker
 
 
 @pytest.fixture
@@ -58,6 +60,16 @@ def business_card(user: User):
         user=user,
     )
     return business_card
+
+
+@pytest.fixture
+def contact_request(user: User):
+    contact_request = ContactRequest.objects.create(
+        lead=user,
+        requestor=None,
+        phone_number="+48564835465"
+    )
+    return contact_request
 
 
 @pytest.fixture
@@ -201,7 +213,7 @@ class TestCardsServices:
 
         assert parsed_vcard_data == expected_parsed_vcard_data
 
-    def get_phone_number_and_vcard_from_request_data_return_phone_num_and_vcard(
+    def test_get_phone_number_and_vcard_from_request_data_return_phone_num_and_vcard(
             self, in_memory_vcard: SimpleUploadedFile
     ):
         data = {
@@ -212,42 +224,31 @@ class TestCardsServices:
         assert phone_num == data["phone_number"]
         assert vcard == data["vcard"]
 
+    def test_redirect_based_on_request_contact_state_return_form_step(self, contact_request: ContactRequest):
+        state = redirect_based_on_request_contact_state(contact_request=contact_request)
+        assert state == "upload_phone_num"
+
+    def test_get_contact_request_return_contact(self, contact_request: ContactRequest):
+        contact = get_contact_request(phone_number=contact_request.phone_number)
+        assert contact
+
 
 class TestSendingDataToCeremeo:
-    ALLOWED_KEYS = [
-        "campaign_token",
-        "phone",
-        "email",
-        "external_id",
-        "ip",
-        "creator_id",
-        "trader_id",
-        "name",
-        "surname",
-        "pesel",
-        "id_card",
-        "account",
-        "address_region",
-        "address_city",
-        "address_street",
-        "address_building",
-        "address_flat",
-        "address_postcode",
-        "correspondence_region",
-        "correspondence_city",
-        "correspondence_street",
-        "correspondence_building",
-        "correspondence_flat",
-        "correspondence_postcode",
-        "comments",
-    ]
+    @pytest.mark.usefixtures("request_mocker")
+    class TestSendingDataToCeremeo:
+        def test_send_data_to_ceremeo_api_return_none_if_data_valid(
+                self, request_mocker
+        ):
+            data = {"phone": "+48635495647"}
+            request_mocker.post(settings.CEREMEO_URL, status_code=200)
+            result = send_data_to_ceremeo_api(data=data)
+            assert request_mocker.called
+            assert result is None
 
-    @requests_mock.Mocker()
-    def test_send_data_to_ceremeo_api(self, request_mocker):
-        data = {
-            "phone": "+48635495647"
-        }
-        requests_mocker.get(settings.CEREMEO_URL, status=200)
-        send_data_to_ceremeo_api(data=data)
-
-
+        def test_send_parsed_vcard_data_to_ceremeo_return_none_if_data_uploaded(
+                self, request_mocker, in_memory_vcard: SimpleUploadedFile
+        ):
+            request_mocker.post(settings.CEREMEO_URL, status_code=200)
+            result = send_parsed_vcard_data_to_ceremeo(vcard=in_memory_vcard)
+            assert request_mocker.called
+            assert result is None

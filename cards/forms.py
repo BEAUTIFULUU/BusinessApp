@@ -1,7 +1,11 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from phonenumber_field.formfields import PhoneNumberField
-from cards.validators import validate_vcard_format, validate_user_photo
+from cards.validators import (
+    validate_vcard_format,
+    validate_user_photo,
+    validate_phone_number_for_contact_request,
+)
 
 
 class AlphaCharsValidator:
@@ -24,7 +28,11 @@ class BusinessCardForm(forms.Form):
 
 
 class FirstStepContactFormPhoneNumber(forms.Form):
-    phone_number = PhoneNumberField(region="PL", required=False)
+    phone_number = PhoneNumberField(
+        region="PL",
+        required=False,
+        validators=[validate_phone_number_for_contact_request],
+    )
     vcard = forms.FileField(
         label="Wyślij wizytówkę", required=False, validators=[validate_vcard_format]
     )

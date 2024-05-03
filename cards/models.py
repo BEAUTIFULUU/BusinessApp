@@ -43,3 +43,4 @@ class ContactRequest(models.Model):
     company_or_contact_place = models.CharField(max_length=150, null=True)
     contact_date = models.DateField(null=True)
     contact_topic = models.CharField(max_length=150, null=True)
+    form_step = models.IntegerField(default=1)

@@ -17,7 +17,6 @@ from BusinessApp import settings
 from cards.models import BusinessCard, ContactRequest
 from cards.validators import (
     validate_business_card_duplication,
-    validate_user_photo,
     validate_vcard_data,
 )
 
@@ -184,7 +183,7 @@ def get_phone_number_and_vcard_from_request_data(
     return phone_number, vcard
 
 
-def send_data_to_ceremeo_api(data: dict[str, str]):
+def send_data_to_ceremeo_api(data: dict[str, str]) -> None | str:
     try:
         response = requests.post(settings.CEREMEO_URL, json=data)
         response.raise_for_status()
@@ -192,7 +191,7 @@ def send_data_to_ceremeo_api(data: dict[str, str]):
         return f"Error sending data to Ceremeo API: {e}"
 
 
-def send_parsed_vcard_data_to_ceremeo(vcard: SimpleUploadedFile):
+def send_parsed_vcard_data_to_ceremeo(vcard: SimpleUploadedFile) -> None | str:
     vcard_data = parse_vcard_data(vcard_file=vcard)
     error_message = send_data_to_ceremeo_api(data=vcard_data)
     return error_message
@@ -201,31 +200,14 @@ def send_parsed_vcard_data_to_ceremeo(vcard: SimpleUploadedFile):
 def redirect_based_on_request_contact_state(
     contact_request: ContactRequest,
 ) -> str:
-    redirect_to_1st_step = "upload_phone_num"
-    redirect_to_2nd_step = "requestor_info"
-    redirect_to_3rd_step = "contact_prefs"
-    redirect_to_4th_step = "finish_meme"
-
-    if not contact_request.phone_number:
-        return redirect_to_1st_step
-    elif not all(
-        [
-            contact_request.name_and_surname,
-            contact_request.email,
-            contact_request.company_or_contact_place,
-        ]
-    ):
-        return redirect_to_2nd_step
-    elif not all(
-        [
-            contact_request.contact_date,
-            contact_request.contact_topic,
-        ]
-    ):
-        return redirect_to_3rd_step
-    else:
-        return redirect_to_4th_step
+    redirect_dict = {
+        1: "upload_phone_num",
+        2: "requestor_info",
+        3: "contact_prefs",
+        4: "finish_meme",
+    }
+    return redirect_dict[contact_request.form_step]
 
 
 def get_contact_request(phone_number: str) -> ContactRequest | None:
-    return ContactRequest.objects.filter(phone_number=phone_number).first()
+    return ContactRequest.objects.filter(phone_number=phone_number)
