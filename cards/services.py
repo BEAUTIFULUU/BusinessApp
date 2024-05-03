@@ -1,15 +1,12 @@
-import email
 import os
 import uuid
 from io import BytesIO
-from pathlib import Path
 from typing import Tuple, Optional
 
 import qrcode
 import vobject
 import requests
 from django.core.files.base import ContentFile
-from vobject import vCard
 from PIL import Image
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import InMemoryUploadedFile, SimpleUploadedFile
@@ -94,7 +91,6 @@ def create_business_card(data: dict[str, any], user: User) -> BusinessCard:
     uploaded_image = data.get("user_photo")
     data.pop("vcard_address")
     validate_business_card_duplication(user=user)
-    validate_user_photo(uploaded_image=uploaded_image)
     vcard = generate_vcard(data=data, user_id=user.id)
 
     width, height = get_image_dimensions(uploaded_image=uploaded_image)
@@ -138,46 +134,51 @@ def create_contact_request(
 
 
 def parse_vcard_data(vcard_file: SimpleUploadedFile) -> dict[str, str]:
-    vcard_content = vcard_file.read().decode("utf-8")
+    if vcard_file is not None:
+        vcard_content = vcard_file.read().decode("utf-8")
 
-    if not vcard_content:
-        return {}
+        if not vcard_content:
+            return {}
 
-    try:
-        vcard = vobject.readOne(vcard_content)
-    except StopIteration:
-        return {}
+        try:
+            vcard = vobject.readOne(vcard_content)
+        except StopIteration:
+            return {}
 
-    vcard_data = {
-        "phone": None,
-        "name": None,
-        "surname": None,
-        "email": None,
-        "comments": [],
-    }
+        vcard_data = {
+            "phone": None,
+            "name": None,
+            "surname": None,
+            "email": None,
+            "comments": [],
+        }
 
-    if vcard.tel:
-        vcard_data["phone"] = vcard.tel.value
+        if vcard.tel:
+            vcard_data["phone"] = vcard.tel.value
 
-    if vcard.n:
-        vcard_data["surname"] = vcard.n.value.family
-        vcard_data["name"] = vcard.n.value.given
+        if vcard.n:
+            vcard_data["surname"] = vcard.n.value.family
+            vcard_data["name"] = vcard.n.value.given
 
-    if vcard.email:
-        vcard_data["email"] = vcard.email.value
+        if vcard.email:
+            vcard_data["email"] = vcard.email.value
 
-    if vcard.org:
-        company_name = (
-            vcard.org.value[0] if isinstance(vcard.org.value, list) else vcard.org.value
-        )
-        vcard_data["comments"].append({"text": f"Company: {company_name}"})
+        if vcard.org:
+            company_name = (
+                vcard.org.value[0]
+                if isinstance(vcard.org.value, list)
+                else vcard.org.value
+            )
+            vcard_data["comments"].append({"text": f"Company: {company_name}"})
 
-    validate_vcard_data(vcard_data)
+        validate_vcard_data(vcard_data)
 
-    return vcard_data
+        return vcard_data
 
 
-def get_phone_number_and_vcard(data):
+def get_phone_number_and_vcard_from_request_data(
+    data: dict[str, any]
+) -> Tuple[any, any]:
     phone_number = data.get("phone_number")
     vcard = data.get("vcard")
     return phone_number, vcard
@@ -191,24 +192,40 @@ def send_data_to_ceremeo_api(data: dict[str, str]):
         return f"Error sending data to Ceremeo API: {e}"
 
 
-def get_phone_num_and_vcard_from_request_data(request: HttpRequest) -> Tuple[any, any]:
-    phone_number = request.POST.get("phone_number")
-    vcard = request.FILES.get("vcard")
-    return phone_number, vcard
-
-
-def send_phone_number_to_ceremeo(data: dict, requestor: User, lead: User):
-    data.pop("vcard")
-    phone = create_contact_request(
-        data=data,
-        requestor=requestor,
-        lead=lead,
-    )
-    error_message = send_data_to_ceremeo_api(data=phone)
-    return error_message
-
-
 def send_parsed_vcard_data_to_ceremeo(vcard: SimpleUploadedFile):
     vcard_data = parse_vcard_data(vcard_file=vcard)
     error_message = send_data_to_ceremeo_api(data=vcard_data)
     return error_message
+
+
+def redirect_based_on_request_contact_state(
+    contact_request: ContactRequest,
+) -> str:
+    redirect_to_1st_step = "upload_phone_num"
+    redirect_to_2nd_step = "requestor_info"
+    redirect_to_3rd_step = "contact_prefs"
+    redirect_to_4th_step = "finish_meme"
+
+    if not contact_request.phone_number:
+        return redirect_to_1st_step
+    elif not all(
+        [
+            contact_request.name_and_surname,
+            contact_request.email,
+            contact_request.company_or_contact_place,
+        ]
+    ):
+        return redirect_to_2nd_step
+    elif not all(
+        [
+            contact_request.contact_date,
+            contact_request.contact_topic,
+        ]
+    ):
+        return redirect_to_3rd_step
+    else:
+        return redirect_to_4th_step
+
+
+def get_contact_request(phone_number: str) -> ContactRequest | None:
+    return ContactRequest.objects.filter(phone_number=phone_number).first()

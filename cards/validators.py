@@ -90,10 +90,3 @@ def validate_vcard_data(vcard_data: dict) -> None:
 
     if not vcard_data["phone"].startswith("+48"):
         raise ValidationError("Phone number must start with '+48'")
-
-
-def validate_contact_request_post_data(data) -> bool:
-    phone_number = data.get("phone_number")
-    vcard = data.get("vcard")
-    if phone_number and vcard:
-        return False

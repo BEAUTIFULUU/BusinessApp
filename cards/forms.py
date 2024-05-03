@@ -1,7 +1,7 @@
 from django import forms
 from django.core.exceptions import ValidationError
 from phonenumber_field.formfields import PhoneNumberField
-from cards.validators import validate_vcard_format
+from cards.validators import validate_vcard_format, validate_user_photo
 
 
 class AlphaCharsValidator:
@@ -19,7 +19,7 @@ class BusinessCardForm(forms.Form):
     company = forms.CharField(max_length=100)
     phone_number = PhoneNumberField(region="PL")
     email = forms.EmailField(max_length=320)
-    user_photo = forms.ImageField()
+    user_photo = forms.ImageField(validators=[validate_user_photo])
     vcard_address = forms.CharField(max_length=200)
 
 
@@ -28,3 +28,15 @@ class FirstStepContactFormPhoneNumber(forms.Form):
     vcard = forms.FileField(
         label="Wyślij wizytówkę", required=False, validators=[validate_vcard_format]
     )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        phone_number = cleaned_data.get("phone_number")
+        vcard = cleaned_data.get("vcard")
+
+        if phone_number and vcard:
+            raise forms.ValidationError(
+                "You need to upload either phone number or vCard, not both."
+            )
+
+        return cleaned_data

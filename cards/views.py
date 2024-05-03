@@ -20,10 +20,11 @@ from cards.services import (
     get_user_card_url,
     get_business_card,
     create_contact_request,
-    parse_vcard_data,
     send_data_to_ceremeo_api,
-    get_phone_num_and_vcard_from_request_data,
     send_parsed_vcard_data_to_ceremeo,
+    redirect_based_on_request_contact_state,
+    get_contact_request,
+    get_phone_number_and_vcard_from_request_data,
 )
 from cards.forms import BusinessCardForm, FirstStepContactFormPhoneNumber
 
@@ -81,58 +82,38 @@ class ContactRequestPhoneInputView(View):
     def post(self, request: HttpRequest, card_id: uuid.UUID) -> HttpResponseRedirect:
         business_card = get_object_or_404(BusinessCard, id=card_id)
         form = FirstStepContactFormPhoneNumber(request.POST, request.FILES)
-        phone_number, vcard = get_phone_num_and_vcard_from_request_data(request=request)
-
-        if phone_number and vcard:
-            return render(
-                request,
-                "contact_phone_number_form_error.html",
-                {
-                    "error_message": "You need to upload either phone number or vCard, not both."
-                },
-                status=400,
-            )
 
         if form.is_valid():
-            if not vcard:
+            phone_number, vcard = get_phone_number_and_vcard_from_request_data(
+                data=form.cleaned_data
+            )
+            contact_request = get_contact_request(phone_number=phone_number)
+            if contact_request:
+                redirect_url = redirect_based_on_request_contact_state(contact_request)
+                if redirect_url:
+                    return HttpResponseRedirect(reverse(redirect_url))
+            if phone_number:
                 data = create_contact_request(
                     data=form.cleaned_data,
                     requestor=request.user,
                     lead=business_card.user,
                 )
                 error_message = send_data_to_ceremeo_api(data=data)
-                if error_message:
-                    return render(
-                        request,
-                        "contact_phone_number.html",
-                        {
-                            "error_message": error_message,
-                            "name_and_surname": business_card.name_and_surname,
-                            "company": business_card.company,
-                            "lead_photo": business_card.user_photo,
-                        },
-                        status=500,
-                    )
-                return HttpResponseRedirect(reverse("requestor_info"))
+                redirect_url_name = "requestor_info"
             else:
                 error_message = send_parsed_vcard_data_to_ceremeo(vcard=vcard)
-                if error_message:
-                    return render(
-                        request,
-                        "contact_phone_number.html",
-                        {
-                            "error_message": error_message,
-                            "name_and_surname": business_card.name_and_surname,
-                            "company": business_card.company,
-                            "lead_photo": business_card.user_photo,
-                        },
-                        status=500,
-                    )
-                return HttpResponseRedirect(reverse("contact_prefs"))
-        else:
-            return render(
-                request,
-                "form_validation_error.html",
-                {"form": form},
-                status=400,
-            )
+                redirect_url_name = "contact_prefs"
+
+            if error_message:
+                return render(
+                    request,
+                    "contact_phone_number.html",
+                    {
+                        "error_message": error_message,
+                        "name_and_surname": business_card.name_and_surname,
+                        "company": business_card.company,
+                        "lead_photo": business_card.user_photo,
+                    },
+                    status=500,
+                )
+            return HttpResponseRedirect(reverse(redirect_url_name))

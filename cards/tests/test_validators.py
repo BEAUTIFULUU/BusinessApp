@@ -12,6 +12,8 @@ from cards.validators import (
     validate_image_format,
     validate_business_card_duplication,
     validate_image_size,
+    validate_vcard_data,
+    validate_vcard_format,
 )
 from cards.models import BusinessCard
 
@@ -114,20 +116,36 @@ class TestImageValidation:
             validate_image_size(uploaded_image=in_memory_file)
             assert str(e.value) == "Photo is too small. Min width: 100, Min height: 100"
 
+
+class TestVcardValidation:
     @pytest.mark.parametrize(
         "in_memory_file", [("test_vcards", "valid_vcf_vcard.vcf")], indirect=True
     )
-    def test_parse_vcard_data(self, in_memory_file: SimpleUploadedFile):
-        expected_parsed_vcard_data = {
-            "phone": "+48-758-334-536",
-            "name": "Derik",
-            "surname": "Stenerson",
-            "email": "deriks@Microsoft.com",
-            "comments": [{"text": "Company: Microsoft Corporation"}],
-        }
-        parsed_vcard_data = parse_vcard_data(vcard_file=in_memory_file)
+    def test_validate_vcard_format_return_none_if_vcard_valid(self, in_memory_file):
+        try:
+            validate_vcard_format(uploaded_vcard=in_memory_file)
+        except ValidationError as e:
+            pytest.fail(str(e))
 
-        assert parsed_vcard_data == expected_parsed_vcard_data
+    @pytest.mark.parametrize(
+        "in_memory_file", [("test_vcards", "fake_vcf_file.vcf")], indirect=True
+    )
+    def test_validate_vcard_format_raise_error_if_invalid_vcard_format(
+        self, in_memory_file: SimpleUploadedFile
+    ):
+        with pytest.raises(ValidationError) as e:
+            validate_vcard_format(uploaded_vcard=in_memory_file)
+            assert str(e.value) == "Invalid vcard format. Only VCF vcards are allowed."
+
+    @pytest.mark.parametrize(
+        "in_memory_file", [("test_vcards", "wrong_extension_vcard.ggg")], indirect=True
+    )
+    def test_validate_vcard_format_raise_error_if_vcard_invalid_vcard_extension(
+        self, in_memory_file: SimpleUploadedFile
+    ):
+        with pytest.raises(ValidationError) as e:
+            validate_vcard_format(uploaded_vcard=in_memory_file)
+            assert str(e.value) == "Invalid vcard extension."
 
 
 @pytest.mark.django_db
@@ -137,3 +155,28 @@ def test_validate_business_card_duplication_raise_error_if_user_already_has_card
     with pytest.raises(ValidationError) as e:
         validate_business_card_duplication(user=user)
         assert str(e.value) == "Card already exists."
+
+
+def test_validate_vcard_data_raise_error_if_key_missing():
+    data = {
+        "phone": "+48-758-334-536",
+        "name": "Derik",
+        "surname": "Stenerson",
+        "comments": [{"text": "Company: Microsoft Corporation"}],
+    }
+    with pytest.raises(ValidationError) as e:
+        validate_vcard_data(vcard_data=data)
+        assert str(e.value) == "Missing required key: email"
+
+
+def test_validate_vcard_data_raise_error_if_phone_not_polish():
+    data = {
+        "phone": "+50-758-334-536",
+        "name": "Derik",
+        "surname": "Stenerson",
+        "email": "deriks@Microsoft.com",
+        "comments": [{"text": "Company: Microsoft Corporation"}],
+    }
+    with pytest.raises(ValidationError) as e:
+        validate_vcard_data(vcard_data=data)
+        assert str(e.value) == "Phone number must start with '+48'"

@@ -42,3 +42,4 @@ class ContactRequest(models.Model):
     email = models.EmailField(max_length=320, null=True)
     company_or_contact_place = models.CharField(max_length=150, null=True)
     contact_date = models.DateField(null=True)
+    contact_topic = models.CharField(max_length=150, null=True)
