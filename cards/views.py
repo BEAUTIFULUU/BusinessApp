@@ -20,10 +20,12 @@ from cards.services import (
     get_user_card_url,
     get_business_card,
     create_contact_request,
-    parse_vcard_data, send_data_to_ceremeo_api,
+    parse_vcard_data,
+    send_data_to_ceremeo_api,
+    get_phone_num_and_vcard_from_request_data,
+    send_parsed_vcard_data_to_ceremeo,
 )
 from cards.forms import BusinessCardForm, FirstStepContactFormPhoneNumber
-from cards.validators import validate_contact_request_post_data
 
 
 class CreateCardView(View):
@@ -79,8 +81,8 @@ class ContactRequestPhoneInputView(View):
     def post(self, request: HttpRequest, card_id: uuid.UUID) -> HttpResponseRedirect:
         business_card = get_object_or_404(BusinessCard, id=card_id)
         form = FirstStepContactFormPhoneNumber(request.POST, request.FILES)
-        phone_number = request.POST.get("phone_number")
-        vcard = request.FILES.get("vcard")
+        phone_number, vcard = get_phone_num_and_vcard_from_request_data(request=request)
+
         if phone_number and vcard:
             return render(
                 request,
@@ -93,27 +95,44 @@ class ContactRequestPhoneInputView(View):
 
         if form.is_valid():
             if not vcard:
-                form.cleaned_data.pop("vcard")
-                create_contact_request(
+                data = create_contact_request(
                     data=form.cleaned_data,
                     requestor=request.user,
                     lead=business_card.user,
                 )
-            else:
-                vcard_data = parse_vcard_data(vcard_file=vcard)
-                error_message = send_data_to_ceremeo_api(data=vcard_data)
+                error_message = send_data_to_ceremeo_api(data=data)
                 if error_message:
                     return render(
                         request,
-                        "contact_phone_number_form_error.html",
-                        {"error_message": error_message},
+                        "contact_phone_number.html",
+                        {
+                            "error_message": error_message,
+                            "name_and_surname": business_card.name_and_surname,
+                            "company": business_card.company,
+                            "lead_photo": business_card.user_photo,
+                        },
                         status=500,
                     )
-            return HttpResponse("success")
+                return HttpResponseRedirect(reverse("requestor_info"))
+            else:
+                error_message = send_parsed_vcard_data_to_ceremeo(vcard=vcard)
+                if error_message:
+                    return render(
+                        request,
+                        "contact_phone_number.html",
+                        {
+                            "error_message": error_message,
+                            "name_and_surname": business_card.name_and_surname,
+                            "company": business_card.company,
+                            "lead_photo": business_card.user_photo,
+                        },
+                        status=500,
+                    )
+                return HttpResponseRedirect(reverse("contact_prefs"))
         else:
             return render(
                 request,
-                "contact_phone_number_form_error.html",
+                "form_validation_error.html",
                 {"form": form},
                 status=400,
             )

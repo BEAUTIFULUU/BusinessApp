@@ -48,7 +48,7 @@ def set_business_cart_post_data(request: HttpRequest) -> QueryDict:
 
 
 def resize_image_to_square(
-        uploaded_image: InMemoryUploadedFile, user: User
+    uploaded_image: InMemoryUploadedFile, user: User
 ) -> InMemoryUploadedFile:
     image = Image.open(uploaded_image)
     image = image.convert("RGB")
@@ -126,12 +126,15 @@ def get_business_card(user_id: uuid.UUID) -> BusinessCard:
 
 
 def create_contact_request(
-        data: dict[str, any], requestor: Optional[User], lead: User
-) -> ContactRequest:
+    data: dict[str, any], requestor: Optional[User], lead: User
+) -> dict[str, str]:
+    data.pop("vcard")
     data["lead"] = lead
     if requestor is not None and requestor.is_authenticated:
         data["requestor"] = requestor
-    return ContactRequest.objects.create(**data)
+    created_contact = ContactRequest.objects.create(**data)
+    phone = {"phone": str(created_contact.phone_number)}
+    return phone
 
 
 def parse_vcard_data(vcard_file: SimpleUploadedFile) -> dict[str, str]:
@@ -150,7 +153,7 @@ def parse_vcard_data(vcard_file: SimpleUploadedFile) -> dict[str, str]:
         "name": None,
         "surname": None,
         "email": None,
-        "comments": []  # Initialize comments list
+        "comments": [],
     }
 
     if vcard.tel:
@@ -164,7 +167,9 @@ def parse_vcard_data(vcard_file: SimpleUploadedFile) -> dict[str, str]:
         vcard_data["email"] = vcard.email.value
 
     if vcard.org:
-        company_name = vcard.org.value[0] if isinstance(vcard.org.value, list) else vcard.org.value
+        company_name = (
+            vcard.org.value[0] if isinstance(vcard.org.value, list) else vcard.org.value
+        )
         vcard_data["comments"].append({"text": f"Company: {company_name}"})
 
     validate_vcard_data(vcard_data)
@@ -184,3 +189,26 @@ def send_data_to_ceremeo_api(data: dict[str, str]):
         response.raise_for_status()
     except requests.exceptions.RequestException as e:
         return f"Error sending data to Ceremeo API: {e}"
+
+
+def get_phone_num_and_vcard_from_request_data(request: HttpRequest) -> Tuple[any, any]:
+    phone_number = request.POST.get("phone_number")
+    vcard = request.FILES.get("vcard")
+    return phone_number, vcard
+
+
+def send_phone_number_to_ceremeo(data: dict, requestor: User, lead: User):
+    data.pop("vcard")
+    phone = create_contact_request(
+        data=data,
+        requestor=requestor,
+        lead=lead,
+    )
+    error_message = send_data_to_ceremeo_api(data=phone)
+    return error_message
+
+
+def send_parsed_vcard_data_to_ceremeo(vcard: SimpleUploadedFile):
+    vcard_data = parse_vcard_data(vcard_file=vcard)
+    error_message = send_data_to_ceremeo_api(data=vcard_data)
+    return error_message

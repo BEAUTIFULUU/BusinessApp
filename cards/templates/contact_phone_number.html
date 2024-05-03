@@ -23,6 +23,12 @@
 
     <img src="{{ lead_photo.url }}" alt="{{ name_and_surname }}'s Photo">
 
+    <div id="error-message">
+        {% if error_message %}
+            <p style="color: red;">{{ error_message }}</p>
+        {% endif %}
+    </div>
+
     <form method="post" enctype="multipart/form-data">
         {% csrf_token %}
         <input type="tel" name="phone_number" placeholder="Wpisz swój numer telefonu...">
