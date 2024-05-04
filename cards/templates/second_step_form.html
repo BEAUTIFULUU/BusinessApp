@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Formularz kontaktowy</title>
+</head>
+<body>
+    <div>
+        <p><strong>Dziękuję!</strong></p>
+        <p>Za chwilę dostaniesz ode mnie SMS.</p>
+        <p>Możesz podać jeszcze jak mam Cię zapisać?</p>
+    </div>
+
+    <div>
+        <form action="{% url 'requestor_info' card_id=card_id %}" method="post">  {% csrf_token %}
+            <input type="hidden" name="card_id" value="{{ card_id }}">
+            <input type="hidden" name="phone_number" value="{{ phone_number }}">
+            <div>
+                <label for="name">Twoje imię i nazwisko:</label><br>
+                <input type="text" id="name" name="name_and_surname" required><br><br>
+            </div>
+            <div>
+                <label for="email">Adres email:</label><br>
+                <input type="email" id="email" name="email" required><br><br>
+            </div>
+            <div>
+                <label for="company">Firma / miejsce kontaktu:</label><br>
+                <input type="text" id="company" name="company_or_contact_place"><br><br>
+            </div>
+            <div>
+                <button type="submit">Dalej</button>
+            </div>
+        </form>
+    </div>
+
+    <div>
+        <p><strong>PS. Przejdź dalej to zobaczysz mema!</strong></p>
+    </div>
+</body>
+</html>

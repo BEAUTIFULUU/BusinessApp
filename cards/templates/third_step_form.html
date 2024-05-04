@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aaa.. i jeszcze jedno</title>
+</head>
+<body>
+    <div>
+        <p><strong>Dziękuję!</strong></p>
+        <p>Jeśli chciałbyś żebym zadzwonił konkretnego</p>
+        <p>dnia, godzinie lub w temacie to napisz! Dzięki!</p>
+    </div>
+
+    <div>
+        <form action="{% url 'contact_prefs' card_id=card_id %}" method="post">
+            {% csrf_token %}
+            <input type="hidden" name="card_id" value="{{ card_id }}">
+            <input type="hidden" name="phone_number" value="{{ phone_number }}">
+
+            <div>
+                <label for="date">Data:</label><br>
+                <input type="date" id="date" name="date"><br><br>
+            </div>
+
+            <div>
+                <label for="contact_topic">Temat:</label><br>
+                <input type="text" id="contact_topic" name="contact_topic" maxlength="200"><br><br>
+            </div>
+
+            <div>
+                <button type="submit">Wyślij</button>
+            </div>
+        </form>
+    </div>
+
+    <div>
+        <p><strong>Teraz już na pewno będzie mem :)!</strong></p>
+    </div>
+</body>
+</html>

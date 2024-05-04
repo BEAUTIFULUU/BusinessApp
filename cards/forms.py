@@ -10,7 +10,7 @@ from cards.validators import (
 
 class AlphaCharsValidator:
     def __call__(self, value):
-        if not value.replace(" ", "").isalpha():
+        if value.strip() and not value.replace(" ", "").isalpha():
             raise ValidationError(
                 "Name and surname can only contain alphabetic characters."
             )
@@ -27,7 +27,7 @@ class BusinessCardForm(forms.Form):
     vcard_address = forms.CharField(max_length=200)
 
 
-class FirstStepContactFormPhoneNumber(forms.Form):
+class FirstStepContactForm(forms.Form):
     phone_number = PhoneNumberField(
         region="PL",
         required=False,
@@ -42,9 +42,27 @@ class FirstStepContactFormPhoneNumber(forms.Form):
         phone_number = cleaned_data.get("phone_number")
         vcard = cleaned_data.get("vcard")
 
+        if not phone_number and not vcard:
+            raise forms.ValidationError(
+                "You need to upload either phone number or vCard."
+            )
+
         if phone_number and vcard:
             raise forms.ValidationError(
-                "You need to upload either phone number or vCard, not both."
+                "You can only upload either phone number or vCard, not both."
             )
 
         return cleaned_data
+
+
+class SecondStepContactForm(forms.Form):
+    name_and_surname = forms.CharField(
+        max_length=60, validators=[AlphaCharsValidator()]
+    )
+    email = forms.EmailField(max_length=320)
+    company_or_contact_place = forms.CharField(max_length=100)
+
+
+class ThirdStepContactForm(forms.Form):
+    date = forms.DateField(required=False)
+    contact_topic = forms.CharField(max_length=200, required=False)

@@ -122,14 +122,14 @@ def get_business_card(user_id: uuid.UUID) -> BusinessCard:
 
 def create_contact_request(
     data: dict[str, any], requestor: Optional[User], lead: User
-) -> dict[str, str]:
+) -> Tuple[dict[str, str], ContactRequest]:
     data.pop("vcard")
     data["lead"] = lead
     if requestor is not None and requestor.is_authenticated:
         data["requestor"] = requestor
     created_contact = ContactRequest.objects.create(**data)
     phone = {"phone": str(created_contact.phone_number)}
-    return phone
+    return phone, created_contact
 
 
 def parse_vcard_data(vcard_file: SimpleUploadedFile) -> dict[str, str]:
@@ -210,4 +210,38 @@ def redirect_based_on_request_contact_state(
 
 
 def get_contact_request(phone_number: str) -> ContactRequest | None:
-    return ContactRequest.objects.filter(phone_number=phone_number)
+    return ContactRequest.objects.filter(phone_number=phone_number).first()
+
+
+def convert_request_data_to_ceremeo_format_second_step(
+    data: dict[str, str], phone: str
+) -> dict[str, str]:
+    data_to_ceremeo = {
+        "phone": phone,
+        "name": None,
+        "surname": None,
+        "email": None,
+        "company_or_contact_place": None,
+    }
+
+    name_and_surname = data.get("name_and_surname", "")
+    name_parts = name_and_surname.split(maxsplit=1)
+
+    if len(name_parts) >= 1:
+        data_to_ceremeo["name"] = name_parts[0].strip()
+    if len(name_parts) == 2:
+        data_to_ceremeo["surname"] = name_parts[1].strip()
+
+    data_to_ceremeo["email"] = data.get("email")
+    data_to_ceremeo["company_or_contact_place"] = data.get("company")
+
+    return data_to_ceremeo
+
+
+def update_contact_request(
+    contact_request: ContactRequest, data: dict[str, str]
+) -> None:
+    for key, value in data.items():
+        setattr(contact_request, key, value)
+    contact_request.form_step = 3
+    contact_request.save()

@@ -23,7 +23,9 @@ from cards.services import (
     parse_vcard_data,
     get_phone_number_and_vcard_from_request_data,
     send_data_to_ceremeo_api,
-    send_parsed_vcard_data_to_ceremeo, redirect_based_on_request_contact_state, get_contact_request,
+    send_parsed_vcard_data_to_ceremeo,
+    redirect_based_on_request_contact_state,
+    get_contact_request,
 )
 from cards.models import BusinessCard, ContactRequest
 
@@ -65,9 +67,7 @@ def business_card(user: User):
 @pytest.fixture
 def contact_request(user: User):
     contact_request = ContactRequest.objects.create(
-        lead=user,
-        requestor=None,
-        phone_number="+48564835465"
+        lead=user, requestor=None, phone_number="+48564835465"
     )
     return contact_request
 
@@ -110,7 +110,7 @@ class TestCardsServices:
         assert "csrfmiddlewaretoken" not in post_data
 
     def test_get_image_dimensions_return_image_resolution(
-            self, in_memory_image: SimpleUploadedFile
+        self, in_memory_image: SimpleUploadedFile
     ):
         image = Image.open(in_memory_image)
         expected_width, expected_height = image.size
@@ -119,7 +119,7 @@ class TestCardsServices:
         assert expected_height == height
 
     def test_resize_image_to_square_resize_image(
-            self, in_memory_image: SimpleUploadedFile, user: User
+        self, in_memory_image: SimpleUploadedFile, user: User
     ):
         width, height = get_image_dimensions(uploaded_image=in_memory_image)
         assert width != height
@@ -131,7 +131,7 @@ class TestCardsServices:
         assert new_width == new_height
 
     def test_create_business_card_create_obj(
-            self, user: User, in_memory_image: SimpleUploadedFile
+        self, user: User, in_memory_image: SimpleUploadedFile
     ):
         with patch("cards.services.generate_qr_code") as mock_generate_qr_code:
             mock_generate_qr_code.return_value = "/path/to/mock_qr_code.png"
@@ -164,18 +164,18 @@ class TestCardsServices:
     def test_get_user_card_url_return_url(self, business_card: BusinessCard):
         card_url = get_user_card_url(business_card.id)
         assert (
-                card_url
-                == f"{settings.DOMAIN}contact_request/{business_card.id}/phone_number"
+            card_url
+            == f"{settings.DOMAIN}contact_request/{business_card.id}/phone_number"
         )
 
     def test_business_card_return_business_card_if_exists(
-            self, user: User, business_card: BusinessCard
+        self, user: User, business_card: BusinessCard
     ):
         result = get_business_card(user_id=user.id)
         assert result is not None
 
     def test_create_contact_request_create_obj_and_return_dict(
-            self, user: User, user_with_no_card: User, in_memory_vcard: SimpleUploadedFile
+        self, user: User, user_with_no_card: User, in_memory_vcard: SimpleUploadedFile
     ):
         data = {"phone_number": "+48536485725", "vcard": in_memory_vcard}
         assert ContactRequest.objects.count() == 0
@@ -189,7 +189,7 @@ class TestCardsServices:
         assert created_contact.requestor == user_with_no_card
 
     def test_create_contact_request_create_obj_and_return_dict_if_user_is_anonymous(
-            self, user: User, in_memory_vcard: SimpleUploadedFile
+        self, user: User, in_memory_vcard: SimpleUploadedFile
     ):
         data = {"phone_number": "+48536485725", "vcard": in_memory_vcard}
         assert ContactRequest.objects.count() == 0
@@ -200,21 +200,30 @@ class TestCardsServices:
         assert created_contact.requestor is None
 
     def test_parse_vcard_data_return_correct_dict(
-            self, in_memory_vcard: SimpleUploadedFile
+        self, in_memory_vcard: SimpleUploadedFile
     ):
-        expected_parsed_vcard_data = {
+        expected_parsed_vcard_data_ceremeo = {
             "phone": "+48-758-334-536",
             "name": "Derik",
             "surname": "Stenerson",
             "email": "deriks@Microsoft.com",
             "comments": [{"text": "Company: Microsoft Corporation"}],
         }
-        parsed_vcard_data = parse_vcard_data(vcard_file=in_memory_vcard)
+        expected_parsed_vcard_data_db = {
+            "phone_number": "+48-758-334-536",
+            "name_and_surname": "Derik Stenerson",
+            "email": "deriks@Microsoft.com",
+            "company": "Microsoft Corporation",
+        }
+        parsed_vcard_data_ceremeo, parsed_vcard_data_db = parse_vcard_data(
+            vcard_file=in_memory_vcard
+        )
 
-        assert parsed_vcard_data == expected_parsed_vcard_data
+        assert parsed_vcard_data_ceremeo == expected_parsed_vcard_data_ceremeo
+        assert parsed_vcard_data_db == expected_parsed_vcard_data_db
 
     def test_get_phone_number_and_vcard_from_request_data_return_phone_num_and_vcard(
-            self, in_memory_vcard: SimpleUploadedFile
+        self, in_memory_vcard: SimpleUploadedFile
     ):
         data = {
             "phone_number": "+48546824635",
@@ -224,7 +233,9 @@ class TestCardsServices:
         assert phone_num == data["phone_number"]
         assert vcard == data["vcard"]
 
-    def test_redirect_based_on_request_contact_state_return_form_step(self, contact_request: ContactRequest):
+    def test_redirect_based_on_request_contact_state_return_form_step(
+        self, contact_request: ContactRequest
+    ):
         state = redirect_based_on_request_contact_state(contact_request=contact_request)
         assert state == "upload_phone_num"
 
@@ -237,7 +248,7 @@ class TestSendingDataToCeremeo:
     @pytest.mark.usefixtures("request_mocker")
     class TestSendingDataToCeremeo:
         def test_send_data_to_ceremeo_api_return_none_if_data_valid(
-                self, request_mocker
+            self, request_mocker
         ):
             data = {"phone": "+48635495647"}
             request_mocker.post(settings.CEREMEO_URL, status_code=200)
@@ -246,7 +257,7 @@ class TestSendingDataToCeremeo:
             assert result is None
 
         def test_send_parsed_vcard_data_to_ceremeo_return_none_if_data_uploaded(
-                self, request_mocker, in_memory_vcard: SimpleUploadedFile
+            self, request_mocker, in_memory_vcard: SimpleUploadedFile
         ):
             request_mocker.post(settings.CEREMEO_URL, status_code=200)
             result = send_parsed_vcard_data_to_ceremeo(vcard=in_memory_vcard)

@@ -159,3 +159,5 @@ AUTH_USER_MODEL = "cards.CustomUser"
 DOMAIN = os.environ["DOMAIN"]
 
 CEREMEO_URL = os.environ["CEREMEO_URL"]
+
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
