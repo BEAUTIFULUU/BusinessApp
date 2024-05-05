@@ -305,10 +305,10 @@ class CompletedContactRequestView(View):
                 reverse(redirect_url, kwargs={"card_id": card_id})
                 + f"?contact_request_id={contact_request.id}"
             )
-        contact_request.delete()
+        contact_request.delete()# 
         business_card = get_object_or_404(BusinessCard, id=card_id)
         random_meme = get_random_meme()
-
+        print(random_meme)
         return render(
             request,
             "finish_meme.html",

@@ -504,6 +504,7 @@ class TestContactRequestThirdStepView:
         assert (
             ContactRequest.objects.filter(id=contact_request_3th_step.id).count() == 1
         )
+        print(contact_request_3th_step.phone_number)
         response = client.post(
             reverse("contact_prefs", kwargs={"card_id": business_card.id}), data,
         )
