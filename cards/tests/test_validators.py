@@ -1,5 +1,6 @@
 import mimetypes
 import os
+from datetime import date
 
 import pytest
 from _pytest.fixtures import SubRequest
@@ -14,8 +15,11 @@ from cards.validators import (
     validate_image_size,
     validate_vcard_data,
     validate_vcard_format,
+    validate_phone_number_for_contact_request,
+    validate_name_and_surname,
+    validate_date,
 )
-from cards.models import BusinessCard
+from cards.models import BusinessCard, ContactRequest
 
 User = get_user_model()
 
@@ -50,6 +54,14 @@ def business_card(user: User):
         user=user,
     )
     return business_card
+
+
+@pytest.fixture
+def contact_request(user: User):
+    contact_request = ContactRequest.objects.create(
+        lead=user, requestor=None, phone_number="+48564835465"
+    )
+    return contact_request
 
 
 class TestImageValidation:
@@ -180,3 +192,24 @@ def test_validate_vcard_data_raise_error_if_phone_not_polish():
     with pytest.raises(ValidationError) as e:
         validate_vcard_data(vcard_data=data)
         assert str(e.value) == "Phone number must start with '+48'"
+
+
+@pytest.mark.django_db
+def test_validate_phone_number_for_contact_request_raise_error_if_phone_number_duplicated(
+    contact_request: ContactRequest,
+):
+    with pytest.raises(ValidationError) as e:
+        validate_phone_number_for_contact_request(contact_request.phone_number)
+        assert str(e.value) == "You cannot create contact request for your own card."
+
+
+def test_validate_name_surname_raise_validation_error_if_space_not_in_it():
+    with pytest.raises(ValidationError) as e:
+        validate_name_and_surname(name_and_surname="testname")
+        assert str(e.value) == "Name and surname must be separated by a space."
+
+
+def test_validate_date_return_raise_error_if_date_in_past():
+    with pytest.raises(ValidationError) as e:
+        validate_date(date=date(2024, 4, 1))
+        assert str(e.value) == "Date cannot be in the past."

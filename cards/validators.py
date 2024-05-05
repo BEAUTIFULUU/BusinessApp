@@ -1,8 +1,10 @@
 import magic
+from datetime import date, timedelta
 from django.contrib.auth.models import User
 from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.core.exceptions import ValidationError
 from PIL import Image
+from django.utils.timezone import now
 
 from BusinessApp import settings
 from cards.models import BusinessCard, ContactRequest
@@ -96,3 +98,15 @@ def validate_phone_number_for_contact_request(phone_number: str) -> None:
     contact_request = ContactRequest.objects.filter(phone_number=phone_number)
     if contact_request:
         raise ValidationError("You cannot create contact request for your own card.")
+
+
+def validate_name_and_surname(name_and_surname: str) -> None:
+    if " " not in name_and_surname:
+        raise ValidationError("Name and surname must be separated by a space.")
+
+
+def validate_date(date: date) -> None:
+    if date < now().date():
+        raise ValidationError("Date cannot be in the past.")
+    if date > now().date() + timedelta(days=30):
+        raise ValidationError("Date cannot be more than 30 days in the future.")

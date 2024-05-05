@@ -5,6 +5,8 @@ from cards.validators import (
     validate_vcard_format,
     validate_user_photo,
     validate_phone_number_for_contact_request,
+    validate_name_and_surname,
+    validate_date,
 )
 
 
@@ -18,7 +20,7 @@ class AlphaCharsValidator:
 
 class BusinessCardForm(forms.Form):
     name_and_surname = forms.CharField(
-        max_length=100, validators=[AlphaCharsValidator()]
+        max_length=100, validators=[AlphaCharsValidator(), validate_name_and_surname]
     )
     company = forms.CharField(max_length=100)
     phone_number = PhoneNumberField(region="PL")
@@ -57,12 +59,12 @@ class FirstStepContactForm(forms.Form):
 
 class SecondStepContactForm(forms.Form):
     name_and_surname = forms.CharField(
-        max_length=60, validators=[AlphaCharsValidator()]
+        max_length=60, validators=[AlphaCharsValidator(), validate_name_and_surname]
     )
     email = forms.EmailField(max_length=320)
     company_or_contact_place = forms.CharField(max_length=100)
 
 
 class ThirdStepContactForm(forms.Form):
-    date = forms.DateField(required=False)
+    date = forms.DateField(required=False, validators=[validate_date])
     contact_topic = forms.CharField(max_length=200, required=False)

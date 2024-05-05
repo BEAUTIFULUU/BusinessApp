@@ -1,7 +1,7 @@
 import uuid
 
 from django.contrib import messages
-from django.core.exceptions import ValidationError, ObjectDoesNotExist
+from django.core.exceptions import ValidationError
 from django.http import (
     HttpRequest,
     HttpResponse,
@@ -9,10 +9,9 @@ from django.http import (
     HttpResponseForbidden,
     HttpResponseRedirect,
 )
-from django.shortcuts import render, get_object_or_404, redirect
+from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
 from django.views import View
-from django.contrib.sessions.models import Session
 
 from cards.models import BusinessCard, ContactRequest
 from cards.services import (
@@ -28,6 +27,8 @@ from cards.services import (
     get_phone_number_and_vcard_from_request_data,
     convert_request_data_to_ceremeo_format_second_step,
     update_contact_request,
+    convert_request_data_to_ceremeo_format_third_step,
+    get_random_meme,
 )
 from cards.forms import (
     BusinessCardForm,
@@ -56,7 +57,7 @@ class CreateCardView(View):
 
 
 class MyCardView(View):
-    def get(self, request: HttpRequest) -> HttpResponse:
+    def get(self, request: HttpRequest) -> HttpResponseRedirect | HttpResponseForbidden:
         if not request.user.is_authenticated:
             return HttpResponseForbidden("You must be logged in.")
         elif not BusinessCard.objects.filter(user=request.user).exists():
@@ -87,21 +88,22 @@ class ContactRequestFirstStepView(View):
     def post(self, request: HttpRequest, card_id: uuid.UUID) -> HttpResponseRedirect:
         business_card = get_object_or_404(BusinessCard, id=card_id)
         form = FirstStepContactForm(request.POST, request.FILES)
+        created_contact_request = None
+        redirect_url_name = ""
 
         if form.is_valid():
             phone_number, vcard = get_phone_number_and_vcard_from_request_data(
                 data=form.cleaned_data
             )
 
-            contact_request = get_contact_request(phone_number=phone_number)
+            contact_request = ContactRequest.objects.filter(phone_number=phone_number)
             if contact_request:
                 redirect_url = redirect_based_on_request_contact_state(contact_request)
                 if redirect_url:
                     return HttpResponseRedirect(
                         reverse(redirect_url, kwargs={"card_id": card_id})
-                        + f"?phone_number={phone_number}"
+                        + f"?contact_request_id={contact_request.id}"
                     )
-
             if phone_number:
                 phone, created_contact_request = create_contact_request(
                     data=form.cleaned_data,
@@ -125,52 +127,67 @@ class ContactRequestFirstStepView(View):
                     status=500,
                 )
 
+        if created_contact_request:
             return HttpResponseRedirect(
                 reverse(redirect_url_name, kwargs={"card_id": card_id})
-                + f"?phone_number={phone_number}"
+                + f"?contact_request_id={created_contact_request.id}"
             )
-        return render(request, "form_validation_error.html", {"form": form}, status=400)
+        else:
+            return render(
+                request, "form_validation_error.html", {"form": form}, status=400
+            )
 
 
 class ContactRequestSecondStepView(View):
-    def get(self, request: HttpRequest, card_id: uuid.UUID):
-        phone_number = request.GET.get("phone_number")
-        if phone_number is None:
+    def get(self, request: HttpRequest, card_id: uuid.UUID) -> HttpResponseRedirect:
+        contact_request_id = request.GET.get("contact_request_id")
+        if contact_request_id is None:
             return HttpResponseRedirect(
                 reverse("upload_phone_num", kwargs={"card_id": card_id})
             )
-        valid_phone_number = "+" + phone_number
-        contact_request = get_contact_request(phone_number=valid_phone_number)
-        if contact_request:
-            redirect_url = redirect_based_on_request_contact_state(contact_request)
-            if redirect_url:
-                if redirect_url == "upload_phone_num":
-                    return HttpResponseRedirect(
-                        reverse(redirect_url, kwargs={"card_id": card_id})
-                    )
+
+        contact_request = get_contact_request(contact_id=contact_request_id)
+        if contact_request is None:
+            return HttpResponseRedirect(
+                reverse("upload_phone_num", kwargs={"card_id": card_id})
+            )
+
+        redirect_url = redirect_based_on_request_contact_state(contact_request)
+
+        if redirect_url != "requestor_info":
+            if redirect_url == "upload_phone_num":
                 return HttpResponseRedirect(
                     reverse(redirect_url, kwargs={"card_id": card_id})
-                    + f"?phone_number={valid_phone_number}"
                 )
+            return HttpResponseRedirect(
+                reverse(redirect_url, kwargs={"card_id": card_id})
+                + f"?contact_request_id={contact_request.id}"
+            )
+
         form = SecondStepContactForm()
         return render(
             request,
             "second_step_form.html",
-            {"form": form, "card_id": card_id, "phone_number": phone_number},
+            {
+                "form": form,
+                "card_id": card_id,
+                "contact_request_id": contact_request_id,
+            },
         )
 
-    def post(self, request: HttpRequest, card_id: uuid.UUID):
-        phone_number = request.POST.get("phone_number")
-        valid_phone_number = "+" + str(phone_number)
+    def post(self, request: HttpRequest, card_id: uuid.UUID) -> HttpResponseRedirect:
+        contact_request_id = request.POST.get("contact_request_id")
         form = SecondStepContactForm(request.POST)
         if form.is_valid():
+            contact_request = get_contact_request(contact_id=contact_request_id)
             data_to_ceremeo = convert_request_data_to_ceremeo_format_second_step(
-                data=form.cleaned_data, phone=valid_phone_number
+                data=form.cleaned_data, phone=contact_request.phone_number
             )
-            contact = ContactRequest.objects.get(phone_number=valid_phone_number)
             error_message = send_data_to_ceremeo_api(data=data_to_ceremeo)
             if error_message is None:
-                update_contact_request(data=form.cleaned_data, contact_request=contact)
+                update_contact_request(
+                    data=form.cleaned_data, contact_request=contact_request, step=3
+                )
             redirect_url = "contact_prefs"
             if error_message:
                 return render(
@@ -181,32 +198,111 @@ class ContactRequestSecondStepView(View):
                 )
             return HttpResponseRedirect(
                 reverse(redirect_url, kwargs={"card_id": card_id})
-                + f"?phone_number={valid_phone_number}"
+                + f"?contact_request_id={contact_request.id}"
             )
         return render(request, "form_validation_error.html", {"form": form}, status=400)
 
 
 class ContactRequestThirdStepView(View):
-    def get(self, request: HttpRequest, card_id: uuid.UUID):
-        phone_number = request.GET.get("phone_number")
-        if phone_number is None:
+    def get(self, request: HttpRequest, card_id: uuid.UUID) -> HttpResponse:
+        contact_request_id = request.GET.get("contact_request_id")
+        if contact_request_id is None:
             return HttpResponseRedirect(
                 reverse("upload_phone_num", kwargs={"card_id": card_id})
             )
-        valid_phone_number = "+" + phone_number
-        contact_request = get_contact_request(phone_number=valid_phone_number)
-        if contact_request:
-            redirect_url = redirect_based_on_request_contact_state(contact_request)
-            if redirect_url:
-                if redirect_url == "upload_phone_num":
-                    return HttpResponseRedirect(
-                        reverse(redirect_url, kwargs={"card_id": card_id})
-                    )
+
+        contact_request = get_contact_request(contact_id=contact_request_id)
+        if contact_request is None:
+            return HttpResponseRedirect(
+                reverse("upload_phone_num", kwargs={"card_id": card_id})
+            )
+
+        redirect_url = redirect_based_on_request_contact_state(contact_request)
+
+        if redirect_url != "contact_prefs":
+            if redirect_url == "upload_phone_num":
                 return HttpResponseRedirect(
                     reverse(redirect_url, kwargs={"card_id": card_id})
-                    + f"?phone_number={valid_phone_number}"
                 )
+            return HttpResponseRedirect(
+                reverse(redirect_url, kwargs={"card_id": card_id})
+                + f"?contact_request_id={contact_request.id}"
+            )
+
         form = ThirdStepContactForm()
         return render(
-            request, "third_step_form.html", {"form": form, "card_id": card_id}
+            request,
+            "third_step_form.html",
+            {
+                "form": form,
+                "card_id": card_id,
+                "contact_request_id": contact_request_id,
+            },
+        )
+
+    def post(self, request: HttpRequest, card_id: uuid.UUID):
+        contact_request_id = request.POST.get("contact_request_id")
+        form = ThirdStepContactForm(request.POST)
+        if form.is_valid():
+            contact_request = get_contact_request(contact_id=contact_request_id)
+            ceremeo_data = convert_request_data_to_ceremeo_format_third_step(
+                data=form.cleaned_data, phone=contact_request.phone_number
+            )
+            error_message = send_data_to_ceremeo_api(data=ceremeo_data)
+            if error_message is None:
+                update_contact_request(
+                    data=form.cleaned_data, contact_request=contact_request, step=4
+                )
+            redirect_url = "finish_meme"
+            if error_message:
+                return render(
+                    request,
+                    "ceremeo_error.html",
+                    {"error_message": error_message},
+                    status=500,
+                )
+            return HttpResponseRedirect(
+                reverse(redirect_url, kwargs={"card_id": card_id})
+                + f"?contact_request_id={contact_request.id}"
+            )
+        return render(request, "form_validation_error.html", {"form": form}, status=400)
+
+
+class CompletedContactRequestView(View):
+    def get(self, request: HttpRequest, card_id: uuid.UUID):
+        contact_request_id = request.GET.get("contact_request_id")
+        if contact_request_id is None:
+            return HttpResponseRedirect(
+                reverse("upload_phone_num", kwargs={"card_id": card_id})
+            )
+
+        contact_request = get_contact_request(contact_id=contact_request_id)
+        if contact_request is None:
+            return HttpResponseRedirect(
+                reverse("upload_phone_num", kwargs={"card_id": card_id})
+            )
+
+        redirect_url = redirect_based_on_request_contact_state(contact_request)
+
+        if redirect_url != "finish_meme":
+            if redirect_url == "upload_phone_num":
+                return HttpResponseRedirect(
+                    reverse(redirect_url, kwargs={"card_id": card_id})
+                )
+            return HttpResponseRedirect(
+                reverse(redirect_url, kwargs={"card_id": card_id})
+                + f"?contact_request_id={contact_request.id}"
+            )
+        contact_request.delete()
+        print(contact_request.id)
+        random_meme = get_random_meme()
+        print(random_meme)
+        return render(
+            request,
+            "finish_meme.html",
+            {
+                "card_id": card_id,
+                "contact_request_id": contact_request_id,
+                "random_meme": random_meme,
+            },
         )

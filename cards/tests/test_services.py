@@ -1,5 +1,6 @@
 import mimetypes
 import os
+from datetime import date
 from unittest.mock import patch
 
 import requests_mock
@@ -26,6 +27,10 @@ from cards.services import (
     send_parsed_vcard_data_to_ceremeo,
     redirect_based_on_request_contact_state,
     get_contact_request,
+    convert_request_data_to_ceremeo_format_second_step,
+    update_contact_request,
+    convert_request_data_to_ceremeo_format_third_step,
+    get_random_meme,
 )
 from cards.models import BusinessCard, ContactRequest
 
@@ -179,12 +184,12 @@ class TestCardsServices:
     ):
         data = {"phone_number": "+48536485725", "vcard": in_memory_vcard}
         assert ContactRequest.objects.count() == 0
-        returned_dict = create_contact_request(
+        result_tuple = create_contact_request(
             data=data, requestor=user_with_no_card, lead=user
         )
-        assert returned_dict["phone"] == "+48536485725"
+        phone_dict, created_contact = result_tuple
+        assert phone_dict["phone"] == "+48536485725"
         assert "vcard" not in data
-        created_contact = ContactRequest.objects.get(phone_number="+48536485725")
         assert created_contact.lead == user
         assert created_contact.requestor == user_with_no_card
 
@@ -193,9 +198,9 @@ class TestCardsServices:
     ):
         data = {"phone_number": "+48536485725", "vcard": in_memory_vcard}
         assert ContactRequest.objects.count() == 0
-        returned_dict = create_contact_request(data=data, requestor=None, lead=user)
-        assert returned_dict["phone"] == "+48536485725"
-        created_contact = ContactRequest.objects.get(phone_number="+48536485725")
+        result_tuple = create_contact_request(data=data, requestor=None, lead=user)
+        phone_dict, created_contact = result_tuple
+        assert phone_dict["phone"] == "+48536485725"
         assert created_contact.lead == user
         assert created_contact.requestor is None
 
@@ -209,18 +214,9 @@ class TestCardsServices:
             "email": "deriks@Microsoft.com",
             "comments": [{"text": "Company: Microsoft Corporation"}],
         }
-        expected_parsed_vcard_data_db = {
-            "phone_number": "+48-758-334-536",
-            "name_and_surname": "Derik Stenerson",
-            "email": "deriks@Microsoft.com",
-            "company": "Microsoft Corporation",
-        }
-        parsed_vcard_data_ceremeo, parsed_vcard_data_db = parse_vcard_data(
-            vcard_file=in_memory_vcard
-        )
+        parsed_vcard_data_ceremeo = parse_vcard_data(vcard_file=in_memory_vcard)
 
         assert parsed_vcard_data_ceremeo == expected_parsed_vcard_data_ceremeo
-        assert parsed_vcard_data_db == expected_parsed_vcard_data_db
 
     def test_get_phone_number_and_vcard_from_request_data_return_phone_num_and_vcard(
         self, in_memory_vcard: SimpleUploadedFile
@@ -240,26 +236,75 @@ class TestCardsServices:
         assert state == "upload_phone_num"
 
     def test_get_contact_request_return_contact(self, contact_request: ContactRequest):
-        contact = get_contact_request(phone_number=contact_request.phone_number)
-        assert contact
+        contact = get_contact_request(contact_id=contact_request.id)
+        assert contact.id == contact_request.id
 
+    def test_send_data_to_ceremeo_api_return_none_if_data_valid(self, request_mocker):
+        data = {"phone": "+48635495647"}
+        request_mocker.post(settings.CEREMEO_URL, status_code=200)
+        result = send_data_to_ceremeo_api(data=data)
+        assert request_mocker.called
+        assert result is None
 
-class TestSendingDataToCeremeo:
-    @pytest.mark.usefixtures("request_mocker")
-    class TestSendingDataToCeremeo:
-        def test_send_data_to_ceremeo_api_return_none_if_data_valid(
-            self, request_mocker
-        ):
-            data = {"phone": "+48635495647"}
-            request_mocker.post(settings.CEREMEO_URL, status_code=200)
-            result = send_data_to_ceremeo_api(data=data)
-            assert request_mocker.called
-            assert result is None
+    def test_send_parsed_vcard_data_to_ceremeo_return_none_if_data_uploaded(
+        self, request_mocker, in_memory_vcard: SimpleUploadedFile
+    ):
+        request_mocker.post(settings.CEREMEO_URL, status_code=200)
+        result = send_parsed_vcard_data_to_ceremeo(vcard=in_memory_vcard)
+        assert request_mocker.called
+        assert result is None
 
-        def test_send_parsed_vcard_data_to_ceremeo_return_none_if_data_uploaded(
-            self, request_mocker, in_memory_vcard: SimpleUploadedFile
-        ):
-            request_mocker.post(settings.CEREMEO_URL, status_code=200)
-            result = send_parsed_vcard_data_to_ceremeo(vcard=in_memory_vcard)
-            assert request_mocker.called
-            assert result is None
+    def test_convert_data_to_ceremeo_format_second_step_return_correct_data_dict(self):
+        data = {
+            "name_and_surname": "test name",
+            "email": "test@gmail.com",
+            "company_or_contact_place": "testplace",
+        }
+        created_dict = convert_request_data_to_ceremeo_format_second_step(
+            data=data, phone="+48543263112"
+        )
+        assert created_dict["phone"] == "+48543263112"
+        assert created_dict["email"] == data["email"]
+        assert created_dict["comments"][0]["text"] == data["company_or_contact_place"]
+
+    def test_update_contact_request_correctly_update_contact(
+        self,
+        contact_request: ContactRequest,
+    ):
+        data = {
+            "phone_number": "+48625346574",
+            "email": "test@gmail.com",
+            "contact_topic": "testtopic",
+        }
+        update_contact_request(data=data, contact_request=contact_request, step=2)
+        updated_contact = ContactRequest.objects.get(id=contact_request.id)
+        assert updated_contact.phone_number == data["phone_number"]
+        assert updated_contact.email == data["email"]
+        assert updated_contact.contact_topic == data["contact_topic"]
+        assert updated_contact.form_step == 2
+
+    def test_convert_data_to_ceremeo_format_third_step_return_correct_dict(self):
+        data = {"date": date(2024, 6, 2), "contact_topic": "testtopic"}
+        result_dict = convert_request_data_to_ceremeo_format_third_step(
+            data=data, phone="+48645739846"
+        )
+        assert result_dict["phone"] == "+48645739846"
+        assert result_dict["comments"][0]["text"] == "2024-06-02"
+        assert result_dict["comments"][1]["text"] == data["contact_topic"]
+
+    @patch("os.listdir")
+    @patch("random.choice")
+    def test_get_random_meme(self, mock_random_choice, mock_listdir):
+        mock_listdir.return_value = [
+            "cat_meme.jpg",
+            "el_gato_del_cringe.jpg",
+            "mysql_cringe_meme.jpg",
+        ]
+        mock_random_choice.return_value = "cat_meme.jpg"
+        random_meme_path = get_random_meme()
+        mock_listdir.assert_called_once_with(os.path.join(settings.BASE_DIR, "static"))
+        mock_random_choice.assert_called_once_with(
+            ["cat_meme.jpg", "el_gato_del_cringe.jpg", "mysql_cringe_meme.jpg"]
+        )
+        expected_path = f"{settings.DOMAIN}static/cat_meme.jpg"
+        assert random_meme_path == expected_path

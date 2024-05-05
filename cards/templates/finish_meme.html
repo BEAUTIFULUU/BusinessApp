@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>W kontakcie!</title>
+</head>
+<body>
+    <div>
+        <p><strong>W kontakcie!</strong></p>
+        <p>Dzięki za przekazanie kontaktu, mój otrzymasz do 5 minut. Do zobaczenia!</p>
+    </div>
+
+    <img src="{{ random_meme.url }}" alt="Random Meme">
+
+    <div>
+        <p><strong>Tak, to ten mem! Jest ok?</strong></p>
+    </div>
+
+    <div>
+        <input type="hidden" name="card_id" value="{{ card_id }}">
+        <input type="hidden" name="contact_request_id" value="{{ contact_request_id }}">
+
+        <button type="button" onclick="handleOk()">OK</button>
+        <button type="button" onclick="handleNieOk()">NIE OK</button>
+    </div>
+
+    <script>
+        function handleOk() {
+            // Handle OK button click action
+        }
+
+        function handleNieOk() {
+            // Handle NIE OK button click action
+        }
+    </script>
+</body>
+</html>

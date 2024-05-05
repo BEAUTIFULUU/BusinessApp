@@ -16,11 +16,11 @@
         <form action="{% url 'contact_prefs' card_id=card_id %}" method="post">
             {% csrf_token %}
             <input type="hidden" name="card_id" value="{{ card_id }}">
-            <input type="hidden" name="phone_number" value="{{ phone_number }}">
+            <input type="hidden" name="contact_request_id" value="{{ contact_request_id }}">
 
             <div>
                 <label for="date">Data:</label><br>
-                <input type="date" id="date" name="date"><br><br>
+                <input type="date" id="date" name="date" required><br><br>
             </div>
 
             <div>

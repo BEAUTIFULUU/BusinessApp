@@ -15,7 +15,7 @@
     <div>
         <form action="{% url 'requestor_info' card_id=card_id %}" method="post">  {% csrf_token %}
             <input type="hidden" name="card_id" value="{{ card_id }}">
-            <input type="hidden" name="phone_number" value="{{ phone_number }}">
+            <input type="hidden" name="contact_request_id" value="{{ contact_request_id }}">
             <div>
                 <label for="name">Twoje imię i nazwisko:</label><br>
                 <input type="text" id="name" name="name_and_surname" required><br><br>

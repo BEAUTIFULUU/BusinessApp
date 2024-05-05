@@ -1,11 +1,13 @@
 import os
 import uuid
+import random
 from io import BytesIO
 from typing import Tuple, Optional
 
 import qrcode
 import vobject
 import requests
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.files.base import ContentFile
 from PIL import Image
 from django.contrib.auth.models import User
@@ -209,19 +211,22 @@ def redirect_based_on_request_contact_state(
     return redirect_dict[contact_request.form_step]
 
 
-def get_contact_request(phone_number: str) -> ContactRequest | None:
-    return ContactRequest.objects.filter(phone_number=phone_number).first()
+def get_contact_request(contact_id: uuid.UUID) -> Optional[ContactRequest]:
+    try:
+        return ContactRequest.objects.get(id=contact_id)
+    except ObjectDoesNotExist:
+        return None
 
 
 def convert_request_data_to_ceremeo_format_second_step(
     data: dict[str, str], phone: str
 ) -> dict[str, str]:
     data_to_ceremeo = {
-        "phone": phone,
+        "phone": str(phone),
         "name": None,
         "surname": None,
         "email": None,
-        "company_or_contact_place": None,
+        "comments": [],
     }
 
     name_and_surname = data.get("name_and_surname", "")
@@ -233,15 +238,38 @@ def convert_request_data_to_ceremeo_format_second_step(
         data_to_ceremeo["surname"] = name_parts[1].strip()
 
     data_to_ceremeo["email"] = data.get("email")
-    data_to_ceremeo["company_or_contact_place"] = data.get("company")
 
+    company_or_contact_place = data.get("company_or_contact_place")
+    data_to_ceremeo["comments"] = [{"text": company_or_contact_place}]
     return data_to_ceremeo
 
 
 def update_contact_request(
-    contact_request: ContactRequest, data: dict[str, str]
+    contact_request: ContactRequest, data: dict[str, str], step: int
 ) -> None:
     for key, value in data.items():
         setattr(contact_request, key, value)
-    contact_request.form_step = 3
+    contact_request.form_step = step
     contact_request.save()
+
+
+def convert_request_data_to_ceremeo_format_third_step(
+    data: dict[str, str], phone: str
+) -> dict[str, str]:
+    data_to_ceremeo = {"phone": str(phone), "comments": []}
+
+    date = data.get("date")
+    contact_topic = data.get("contact_topic")
+    data_to_ceremeo["comments"] = [{"text": str(date)}, {"text": contact_topic}]
+    return data_to_ceremeo
+
+
+def get_random_meme():
+    meme_dir = os.path.join(settings.BASE_DIR, "static")
+    meme_files = os.listdir(meme_dir)
+    meme_files = [
+        file for file in meme_files if file.endswith((".jpg", ".jpeg", ".png"))
+    ]
+    random_meme_filename = random.choice(meme_files)
+    random_meme_path = f"{settings.DOMAIN}static/{random_meme_filename}"
+    return random_meme_path
