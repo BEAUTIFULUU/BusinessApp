@@ -240,7 +240,7 @@ class ContactRequestThirdStepView(View):
             },
         )
 
-    def post(self, request: HttpRequest, card_id: uuid.UUID):
+    def post(self, request: HttpRequest, card_id: uuid.UUID) -> HttpResponseRedirect:
         contact_request_id = request.POST.get("contact_request_id")
         form = ThirdStepContactForm(request.POST)
         if form.is_valid():
@@ -269,7 +269,7 @@ class ContactRequestThirdStepView(View):
 
 
 class CompletedContactRequestView(View):
-    def get(self, request: HttpRequest, card_id: uuid.UUID):
+    def get(self, request: HttpRequest, card_id: uuid.UUID) -> HttpResponseRedirect:
         contact_request_id = request.GET.get("contact_request_id")
         if contact_request_id is None:
             return HttpResponseRedirect(
@@ -294,9 +294,7 @@ class CompletedContactRequestView(View):
                 + f"?contact_request_id={contact_request.id}"
             )
         contact_request.delete()
-        print(contact_request.id)
         random_meme = get_random_meme()
-        print(random_meme)
         return render(
             request,
             "finish_meme.html",
