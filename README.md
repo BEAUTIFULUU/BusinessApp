@@ -24,7 +24,7 @@ Set up MYSQL_USER from your dev.env in entrypoint for mysql:
 
     - In folder db open entrypoint.sql
 
-    - In GRANT ALL PRIVILEGES ON *.* TO 'mysql'@'%' WITH GRANT OPTION; set 'mysql' to your MYSQ_USER from dev.env
+    - In GRANT ALL PRIVILEGES ON *.* TO 'mysql'@'%' WITH GRANT OPTION; set 'mysql' to your MYSQL_USER from dev.env
 Build Docker Compose:
 
 	- Run the "command docker-compose build" to build the Docker containers.
