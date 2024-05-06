@@ -1,6 +1,12 @@
 # **BusinessApp**
 
-BusinessApp is an application that empowers users to create their own business cards and effortlessly share their contact information with others. Additionally, users can connect with potential leads by sending and receiving contact requests. The app is built using Python and Django framework, leveraging MySQL, Docker for efficient deployment and management.
+BusinessApp is an application that empowers users to create their own business cards and effortlessly share their contact information with others. Additionally, users can connect with potential leads by sending and receiving contact requests.
+
+## Tech Stack
+
+- Django
+- MySQL
+- Docker
 ## Features
 
 - Create and customize your business card.
