@@ -19,6 +19,12 @@ Set up Environment:
 
 	- Create a file named dev.env based on the provided env.example.
 	- Configure the environment variables according to your setup.
+
+Set up MYSQL_USER from your dev.env in entrypoint for mysql:
+
+    - In folder db open entrypoint.sql
+
+    - In GRANT ALL PRIVILEGES ON *.* TO 'mysql'@'%' WITH GRANT OPTION; set 'mysql' to your MYSQ_USER from dev.env
 Build Docker Compose:
 
 	- Run the "command docker-compose build" to build the Docker containers.
