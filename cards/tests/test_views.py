@@ -421,13 +421,15 @@ class TestContactRequestSecondStepView:
         request_mocker.post(settings.CEREMEO_URL, status_code=200)
         response = client.post(
             reverse("requestor_info", kwargs={"card_id": business_card.id}),
-      
             data,
         )
         updated_contact = ContactRequest.objects.get(id=contact_request_2nd_step.id)
         assert response.status_code == 302
-        assert response.url == reverse(
-            "contact_prefs", kwargs={"card_id": business_card.id}) + f"?contact_request_id={contact_request_2nd_step.id}"
+        assert (
+            response.url
+            == reverse("contact_prefs", kwargs={"card_id": business_card.id})
+            + f"?contact_request_id={contact_request_2nd_step.id}"
+        )
         assert updated_contact.name_and_surname == data["name_and_surname"]
         assert updated_contact.email == data["email"]
         assert (
@@ -450,7 +452,8 @@ class TestContactRequestSecondStepView:
         }
         request_mocker.post(settings.CEREMEO_URL, status_code=200)
         response = client.post(
-            reverse("requestor_info", kwargs={"card_id": business_card.id}), data,
+            reverse("requestor_info", kwargs={"card_id": business_card.id}),
+            data,
         )
         assert response.status_code == 400
 
@@ -505,7 +508,8 @@ class TestContactRequestThirdStepView:
             ContactRequest.objects.filter(id=contact_request_3th_step.id).count() == 1
         )
         response = client.post(
-            reverse("contact_prefs", kwargs={"card_id": business_card.id}), data,
+            reverse("contact_prefs", kwargs={"card_id": business_card.id}),
+            data,
         )
         assert response.status_code == 302
 
@@ -516,12 +520,14 @@ class TestContactRequestThirdStepView:
         business_card: BusinessCard,
     ):
         client = Client()
-        data = {"date": date(2024, 5, 1),
-                "contact_request_id": contact_request_3th_step.id,
+        data = {
+            "date": date(2024, 5, 1),
+            "contact_request_id": contact_request_3th_step.id,
         }
         request_mocker.post(settings.CEREMEO_URL, status_code=200)
         response = client.post(
-            reverse("contact_prefs", kwargs={"card_id": business_card.id}), data,
+            reverse("contact_prefs", kwargs={"card_id": business_card.id}),
+            data,
         )
         assert response.status_code == 400
 

@@ -43,7 +43,7 @@ class CreateCardView(View):
         if not request.user.is_authenticated:
             return HttpResponseForbidden("You must be logged in.")
         form = BusinessCardForm()
-        return render(request, "create_card.html", {"form": form}) 
+        return render(request, "create_card.html", {"form": form})
 
     def post(self, request: HttpRequest) -> HttpResponse:
         form = BusinessCardForm(request.POST, request.FILES)
@@ -173,7 +173,7 @@ class ContactRequestSecondStepView(View):
                 "form": form,
                 "card_id": card_id,
                 "contact_request_id": contact_request_id,
-                "lead_photo": business_card.user_photo
+                "lead_photo": business_card.user_photo,
             },
         )
 
@@ -244,7 +244,7 @@ class ContactRequestThirdStepView(View):
                 "form": form,
                 "card_id": card_id,
                 "contact_request_id": contact_request_id,
-                "lead_photo": business_card.user_photo
+                "lead_photo": business_card.user_photo,
             },
         )
 
@@ -316,6 +316,6 @@ class CompletedContactRequestView(View):
                 "card_id": card_id,
                 "contact_request_id": contact_request_id,
                 "random_meme": random_meme,
-                "lead_photo": business_card.user_photo
+                "lead_photo": business_card.user_photo,
             },
         )
